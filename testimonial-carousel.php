@@ -2,8 +2,8 @@
 /**
  * Plugin Name: Testimonial Carousel
  * Description: Manage testimonials in WordPress and display them in a responsive autoplay carousel with animated popups.
- * Version: 1.0.1
- * Author: The Benchmark School
+ * Version: 1.1.0
+ * Author: Devolution
  * Text Domain: testimonial-carousel
  * Requires at least: 6.2
  * Requires PHP: 7.4
@@ -13,7 +13,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'BMTC_VERSION', '1.0.1' );
+define( 'BMTC_VERSION', '1.1.0' );
 define( 'BMTC_FILE', __FILE__ );
 define( 'BMTC_DIR', plugin_dir_path( __FILE__ ) );
 define( 'BMTC_URL', plugin_dir_url( __FILE__ ) );
@@ -32,6 +32,9 @@ final class Testimonial_Carousel {
 		add_action( 'manage_' . self::POST_TYPE . '_posts_custom_column', array( __CLASS__, 'admin_column_content' ), 10, 2 );
 		add_action( 'pre_get_posts', array( __CLASS__, 'admin_order' ) );
 		add_action( 'admin_notices', array( __CLASS__, 'shortcode_notice' ) );
+		add_action( 'admin_menu', array( __CLASS__, 'register_import_export_page' ) );
+		add_action( 'admin_post_bmtc_export_testimonials', array( __CLASS__, 'export_testimonials' ) );
+		add_action( 'admin_post_bmtc_import_testimonials', array( __CLASS__, 'import_testimonials' ) );
 		add_shortcode( 'testimonial-carousel', array( __CLASS__, 'shortcode' ) );
 	}
 
@@ -178,6 +181,251 @@ final class Testimonial_Carousel {
 		?>
 		<div class="notice notice-info"><p><?php esc_html_e( 'Display the carousel with:', 'testimonial-carousel' ); ?> <code>[testimonial-carousel]</code></p></div>
 		<?php
+	}
+
+	public static function register_import_export_page() {
+		add_submenu_page(
+			'edit.php?post_type=' . self::POST_TYPE,
+			__( 'Import / Export Testimonials', 'testimonial-carousel' ),
+			__( 'Import / Export', 'testimonial-carousel' ),
+			'manage_options',
+			'bmtc-import-export',
+			array( __CLASS__, 'render_import_export_page' )
+		);
+	}
+
+	public static function render_import_export_page() {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			return;
+		}
+		$notice = get_transient( 'bmtc_import_notice_' . get_current_user_id() );
+		if ( $notice ) {
+			delete_transient( 'bmtc_import_notice_' . get_current_user_id() );
+		}
+		?>
+		<div class="wrap">
+			<h1><?php esc_html_e( 'Import / Export Testimonials', 'testimonial-carousel' ); ?></h1>
+			<?php if ( is_array( $notice ) ) : ?>
+				<div class="notice notice-<?php echo esc_attr( $notice['type'] ); ?> is-dismissible"><p><?php echo esc_html( $notice['message'] ); ?></p></div>
+			<?php endif; ?>
+
+			<div class="card" style="max-width:760px;padding:8px 22px 20px;margin-top:20px">
+				<h2><?php esc_html_e( 'Export testimonials', 'testimonial-carousel' ); ?></h2>
+				<p><?php esc_html_e( 'Download all published and unpublished testimonials, including their footer fields, order, and status, as a portable JSON file.', 'testimonial-carousel' ); ?></p>
+				<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
+					<input type="hidden" name="action" value="bmtc_export_testimonials">
+					<?php wp_nonce_field( 'bmtc_export_testimonials' ); ?>
+					<?php submit_button( __( 'Download Export File', 'testimonial-carousel' ), 'primary', 'submit', false ); ?>
+				</form>
+				<p><a href="<?php echo esc_url( BMTC_URL . 'data/testimonial-carousel-import.json' ); ?>" download><?php esc_html_e( 'Download the bundled 12-testimonial import file', 'testimonial-carousel' ); ?></a></p>
+			</div>
+
+			<div class="card" style="max-width:760px;padding:8px 22px 20px;margin-top:20px">
+				<h2><?php esc_html_e( 'Import testimonials', 'testimonial-carousel' ); ?></h2>
+				<p><?php esc_html_e( 'Upload a JSON file exported by this plugin. The recommended mode updates matching testimonials and adds only new ones.', 'testimonial-carousel' ); ?></p>
+				<form method="post" enctype="multipart/form-data" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
+					<input type="hidden" name="action" value="bmtc_import_testimonials">
+					<?php wp_nonce_field( 'bmtc_import_testimonials' ); ?>
+					<p><input type="file" name="bmtc_import_file" accept="application/json,.json" required></p>
+					<p>
+						<label for="bmtc_import_mode"><strong><?php esc_html_e( 'Import mode', 'testimonial-carousel' ); ?></strong></label><br>
+						<select id="bmtc_import_mode" name="bmtc_import_mode">
+							<option value="upsert"><?php esc_html_e( 'Update matching testimonials and add new ones (recommended)', 'testimonial-carousel' ); ?></option>
+							<option value="append"><?php esc_html_e( 'Add every testimonial as new', 'testimonial-carousel' ); ?></option>
+						</select>
+					</p>
+					<?php submit_button( __( 'Import Testimonials', 'testimonial-carousel' ), 'primary', 'submit', false ); ?>
+				</form>
+			</div>
+		</div>
+		<?php
+	}
+
+	private static function migration_id( $author, $content ) {
+		return 'tc-' . substr( hash( 'sha256', strtolower( trim( wp_strip_all_tags( $author ) ) ) . '|' . trim( wp_strip_all_tags( $content ) ) ), 0, 24 );
+	}
+
+	private static function portable_testimonial( $post_id ) {
+		$author       = (string) get_post_meta( $post_id, '_bmtc_author', true );
+		$relationship = (string) get_post_meta( $post_id, '_bmtc_relationship', true );
+		$campus       = (string) get_post_meta( $post_id, '_bmtc_campus', true );
+		$initials     = (string) get_post_meta( $post_id, '_bmtc_initials', true );
+		$content      = (string) get_post_field( 'post_content', $post_id );
+		$migration_id = (string) get_post_meta( $post_id, '_bmtc_migration_id', true );
+		if ( ! $migration_id ) {
+			$migration_id = self::migration_id( $author, $content );
+			update_post_meta( $post_id, '_bmtc_migration_id', $migration_id );
+		}
+		return array(
+			'migration_id' => $migration_id,
+			'title'        => (string) get_the_title( $post_id ),
+			'content'      => $content,
+			'author'       => $author,
+			'relationship' => $relationship,
+			'campus'       => $campus,
+			'initials'     => $initials,
+			'order'        => (int) get_post_field( 'menu_order', $post_id ),
+			'status'       => (string) get_post_status( $post_id ),
+		);
+	}
+
+	public static function export_testimonials() {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'You are not allowed to export testimonials.', 'testimonial-carousel' ) );
+		}
+		check_admin_referer( 'bmtc_export_testimonials' );
+		$posts = get_posts(
+			array(
+				'post_type'      => self::POST_TYPE,
+				'post_status'    => array( 'publish', 'draft', 'pending', 'private' ),
+				'posts_per_page' => -1,
+				'orderby'        => array( 'menu_order' => 'ASC', 'date' => 'ASC' ),
+				'order'          => 'ASC',
+			)
+		);
+		$items = array();
+		foreach ( $posts as $post ) {
+			$items[] = self::portable_testimonial( $post->ID );
+		}
+		$payload = array(
+			'schema_version' => 1,
+			'plugin'         => 'testimonial-carousel',
+			'exported_at'    => gmdate( 'c' ),
+			'testimonials'   => $items,
+		);
+		nocache_headers();
+		header( 'Content-Type: application/json; charset=utf-8' );
+		header( 'Content-Disposition: attachment; filename="testimonial-carousel-export-' . gmdate( 'Y-m-d' ) . '.json"' );
+		echo wp_json_encode( $payload, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- JSON download.
+		exit;
+	}
+
+	private static function import_notice( $type, $message ) {
+		set_transient(
+			'bmtc_import_notice_' . get_current_user_id(),
+			array( 'type' => $type, 'message' => $message ),
+			60
+		);
+		wp_safe_redirect( admin_url( 'edit.php?post_type=' . self::POST_TYPE . '&page=bmtc-import-export' ) );
+		exit;
+	}
+
+	public static function import_testimonials() {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'You are not allowed to import testimonials.', 'testimonial-carousel' ) );
+		}
+		check_admin_referer( 'bmtc_import_testimonials' );
+		if ( empty( $_FILES['bmtc_import_file'] ) || ! is_array( $_FILES['bmtc_import_file'] ) ) {
+			self::import_notice( 'error', __( 'Please select a JSON import file.', 'testimonial-carousel' ) );
+		}
+		$file = $_FILES['bmtc_import_file']; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Validated as an uploaded temporary file below.
+		if ( ! isset( $file['error'], $file['tmp_name'], $file['size'], $file['name'] ) || UPLOAD_ERR_OK !== (int) $file['error'] || ! is_uploaded_file( $file['tmp_name'] ) ) {
+			self::import_notice( 'error', __( 'The uploaded file could not be read.', 'testimonial-carousel' ) );
+		}
+		if ( (int) $file['size'] > 5 * MB_IN_BYTES || 'json' !== strtolower( pathinfo( sanitize_file_name( $file['name'] ), PATHINFO_EXTENSION ) ) ) {
+			self::import_notice( 'error', __( 'Upload a valid JSON file no larger than 5 MB.', 'testimonial-carousel' ) );
+		}
+		$decoded = json_decode( (string) file_get_contents( $file['tmp_name'] ), true );
+		$items   = isset( $decoded['testimonials'] ) ? $decoded['testimonials'] : $decoded;
+		if ( ! is_array( $items ) || count( $items ) > 2000 ) {
+			self::import_notice( 'error', __( 'The import file has an invalid structure or too many records.', 'testimonial-carousel' ) );
+		}
+		$mode = isset( $_POST['bmtc_import_mode'] ) ? sanitize_key( wp_unslash( $_POST['bmtc_import_mode'] ) ) : 'upsert';
+		if ( ! in_array( $mode, array( 'upsert', 'append' ), true ) ) {
+			$mode = 'upsert';
+		}
+
+		$existing_by_id = array();
+		if ( 'upsert' === $mode ) {
+			$existing_ids = get_posts(
+				array(
+					'post_type'      => self::POST_TYPE,
+					'post_status'    => 'any',
+					'posts_per_page' => -1,
+					'fields'         => 'ids',
+				)
+			);
+			foreach ( $existing_ids as $existing_id ) {
+				$key = (string) get_post_meta( $existing_id, '_bmtc_migration_id', true );
+				if ( ! $key ) {
+					$key = self::migration_id(
+						(string) get_post_meta( $existing_id, '_bmtc_author', true ),
+						(string) get_post_field( 'post_content', $existing_id )
+					);
+					update_post_meta( $existing_id, '_bmtc_migration_id', $key );
+				}
+				$existing_by_id[ $key ] = (int) $existing_id;
+			}
+		}
+
+		$added = 0;
+		$updated = 0;
+		$skipped = 0;
+		foreach ( $items as $index => $item ) {
+			if ( ! is_array( $item ) ) {
+				++$skipped;
+				continue;
+			}
+			$author       = sanitize_text_field( $item['author'] ?? '' );
+			$content      = wp_kses_post( $item['content'] ?? '' );
+			$title        = sanitize_text_field( $item['title'] ?? $author );
+			$relationship = sanitize_text_field( $item['relationship'] ?? '' );
+			$campus       = sanitize_text_field( $item['campus'] ?? '' );
+			$initials     = sanitize_text_field( $item['initials'] ?? '' );
+			$migration_id = sanitize_key( $item['migration_id'] ?? '' );
+			$migration_id = $migration_id ? $migration_id : self::migration_id( $author, $content );
+			$status       = sanitize_key( $item['status'] ?? 'publish' );
+			$status       = in_array( $status, array( 'publish', 'draft', 'pending', 'private' ), true ) ? $status : 'publish';
+			if ( '' === $author || '' === trim( wp_strip_all_tags( $content ) ) ) {
+				++$skipped;
+				continue;
+			}
+			$postarr = array(
+				'post_type'    => self::POST_TYPE,
+				'post_status'  => $status,
+				'post_title'   => $title ? $title : $author,
+				'post_content' => wp_slash( $content ),
+				'menu_order'   => isset( $item['order'] ) ? intval( $item['order'] ) : $index + 1,
+			);
+			if ( 'upsert' === $mode && isset( $existing_by_id[ $migration_id ] ) ) {
+				$postarr['ID'] = $existing_by_id[ $migration_id ];
+			}
+			$post_id = wp_insert_post( $postarr, true );
+			if ( is_wp_error( $post_id ) ) {
+				++$skipped;
+				continue;
+			}
+			if ( isset( $postarr['ID'] ) ) {
+				++$updated;
+			} else {
+				++$added;
+			}
+			$meta = array(
+				'_bmtc_author'       => $author,
+				'_bmtc_relationship' => $relationship,
+				'_bmtc_campus'       => $campus,
+				'_bmtc_initials'     => $initials,
+				'_bmtc_migration_id' => $migration_id,
+			);
+			foreach ( $meta as $key => $value ) {
+				if ( '' === $value ) {
+					delete_post_meta( $post_id, $key );
+				} else {
+					update_post_meta( $post_id, $key, $value );
+				}
+			}
+		}
+
+		self::import_notice(
+			'success',
+			sprintf(
+				/* translators: 1: added count, 2: updated count, 3: skipped count. */
+				__( 'Import complete: %1$d added, %2$d updated, %3$d skipped.', 'testimonial-carousel' ),
+				$added,
+				$updated,
+				$skipped
+			)
+		);
 	}
 
 	private static function initials( $author ) {
@@ -334,6 +582,11 @@ final class Testimonial_Carousel {
 					update_post_meta( $post_id, '_bmtc_' . $field, sanitize_text_field( $item[ $field ] ) );
 				}
 			}
+			update_post_meta(
+				$post_id,
+				'_bmtc_migration_id',
+				self::migration_id( (string) ( $item['author'] ?? '' ), (string) ( $item['content'] ?? '' ) )
+			);
 		}
 		update_option( 'bmtc_seeded_version', BMTC_VERSION );
 	}

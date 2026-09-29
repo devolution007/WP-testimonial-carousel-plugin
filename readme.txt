@@ -4,7 +4,7 @@ Tags: testimonials, carousel, shortcode, popup, school
 Requires at least: 6.2
 Tested up to: 6.8
 Requires PHP: 7.4
-Stable tag: 1.0.1
+Stable tag: 1.1.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -61,7 +61,25 @@ Attributes can be combined.
 * Use the Order field in Page Attributes to set the card order. Lower numbers appear first.
 * Publish a testimonial to show it. Draft or trash it to hide it.
 
+== Import and Export ==
+
+Open **Testimonials > Import / Export** in the WordPress dashboard.
+
+* Export downloads all published and unpublished testimonials as a portable JSON file.
+* The export includes testimonial content, footer fields, campus, initials, order, and publication status.
+* The recommended import mode updates matching testimonials and adds new ones without duplicating existing records.
+* The optional append mode imports every record as a new testimonial.
+* Import files are limited to 5 MB and 2,000 testimonials.
+
 == Changelog ==
+
+= 1.1.0 =
+* Added JSON import and export tools under Testimonials > Import / Export.
+* Added migration identifiers for safe update-or-add imports.
+* Added a ready-to-import file containing the 12 bundled testimonials.
+
+= 1.0.2 =
+* Updated the plugin author to Devolution.
 
 = 1.0.1 =
 * Initial release.
