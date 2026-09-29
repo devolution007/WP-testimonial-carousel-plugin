@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Testimonial Carousel
  * Description: Manage testimonials in WordPress and display them in a responsive autoplay carousel with animated popups.
- * Version: 1.1.0
+ * Version: 1.1.3
  * Author: Devolution
  * Text Domain: testimonial-carousel
  * Requires at least: 6.2
@@ -13,7 +13,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'BMTC_VERSION', '1.1.0' );
+define( 'BMTC_VERSION', '1.1.3' );
 define( 'BMTC_FILE', __FILE__ );
 define( 'BMTC_DIR', plugin_dir_path( __FILE__ ) );
 define( 'BMTC_URL', plugin_dir_url( __FILE__ ) );

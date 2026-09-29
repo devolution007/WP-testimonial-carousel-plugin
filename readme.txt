@@ -4,7 +4,7 @@ Tags: testimonials, carousel, shortcode, popup, school
 Requires at least: 6.2
 Tested up to: 6.8
 Requires PHP: 7.4
-Stable tag: 1.1.0
+Stable tag: 1.1.3
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -72,6 +72,15 @@ Open **Testimonials > Import / Export** in the WordPress dashboard.
 * Import files are limited to 5 MB and 2,000 testimonials.
 
 == Changelog ==
+
+= 1.1.3 =
+* Neutralized theme-level button hover styles and the parent-card hover while View more is hovered.
+
+= 1.1.2 =
+* Removed the View more mouse-hover effect while retaining keyboard focus visibility.
+
+= 1.1.1 =
+* Added a clear hover and keyboard-focus treatment to the View more control.
 
 = 1.1.0 =
 * Added JSON import and export tools under Testimonials > Import / Export.
