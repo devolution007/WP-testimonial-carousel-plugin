@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Testimonial Carousel
  * Description: Manage testimonials in WordPress and display them in a responsive autoplay carousel with animated popups.
- * Version: 1.1.3
+ * Version: 1.1.4
  * Author: Devolution
  * Text Domain: testimonial-carousel
  * Requires at least: 6.2
@@ -13,7 +13,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'BMTC_VERSION', '1.1.3' );
+define( 'BMTC_VERSION', '1.1.4' );
 define( 'BMTC_FILE', __FILE__ );
 define( 'BMTC_DIR', plugin_dir_path( __FILE__ ) );
 define( 'BMTC_URL', plugin_dir_url( __FILE__ ) );
@@ -535,60 +535,7 @@ final class Testimonial_Carousel {
 
 	public static function activate() {
 		self::register_post_type();
-		self::seed_testimonials();
 		flush_rewrite_rules();
-	}
-
-	private static function seed_testimonials() {
-		if ( get_option( 'bmtc_seeded_version' ) ) {
-			return;
-		}
-		$existing = get_posts(
-			array(
-				'post_type'      => self::POST_TYPE,
-				'post_status'    => 'any',
-				'posts_per_page' => 1,
-				'fields'         => 'ids',
-			)
-		);
-		if ( ! empty( $existing ) ) {
-			update_option( 'bmtc_seeded_version', BMTC_VERSION );
-			return;
-		}
-		$file = BMTC_DIR . 'data/seed-testimonials.json';
-		if ( ! is_readable( $file ) ) {
-			return;
-		}
-		$data = json_decode( (string) file_get_contents( $file ), true );
-		if ( ! is_array( $data ) ) {
-			return;
-		}
-		foreach ( $data as $index => $item ) {
-			$post_id = wp_insert_post(
-				array(
-					'post_type'    => self::POST_TYPE,
-					'post_status'  => 'publish',
-					'post_title'   => sanitize_text_field( $item['author'] ?? sprintf( __( 'Testimonial %d', 'testimonial-carousel' ), $index + 1 ) ),
-					'post_content' => wp_slash( wp_kses_post( $item['content'] ?? '' ) ),
-					'menu_order'   => $index + 1,
-				),
-				true
-			);
-			if ( is_wp_error( $post_id ) ) {
-				continue;
-			}
-			foreach ( array( 'author', 'relationship', 'campus', 'initials' ) as $field ) {
-				if ( ! empty( $item[ $field ] ) ) {
-					update_post_meta( $post_id, '_bmtc_' . $field, sanitize_text_field( $item[ $field ] ) );
-				}
-			}
-			update_post_meta(
-				$post_id,
-				'_bmtc_migration_id',
-				self::migration_id( (string) ( $item['author'] ?? '' ), (string) ( $item['content'] ?? '' ) )
-			);
-		}
-		update_option( 'bmtc_seeded_version', BMTC_VERSION );
 	}
 }
 

@@ -4,7 +4,7 @@ Tags: testimonials, carousel, shortcode, popup, school
 Requires at least: 6.2
 Tested up to: 6.8
 Requires PHP: 7.4
-Stable tag: 1.1.3
+Stable tag: 1.1.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -24,13 +24,13 @@ The front-end carousel includes:
 * Escape-key, close-button, and backdrop closing.
 * Reduced-motion support.
 
-The plugin imports the 12 supplied testimonials once when first activated on a site with no existing plugin testimonials.
+New installations start with no testimonials. A separate 12-testimonial JSON file is included for optional manual import.
 
 == Installation ==
 
 1. Upload the `testimonial-carousel` folder to `/wp-content/plugins/`, or install the ZIP from Plugins > Add New > Upload Plugin.
 2. Activate **Testimonial Carousel**.
-3. Open **Testimonials** in the WordPress dashboard to manage the imported testimonials.
+3. Open **Testimonials** in the WordPress dashboard to add testimonials, or use **Testimonials > Import / Export** to import a JSON file.
 4. Add `[testimonial-carousel]` to a page, post, shortcode block, or Elementor Shortcode widget.
 
 == Shortcode ==
@@ -72,6 +72,10 @@ Open **Testimonials > Import / Export** in the WordPress dashboard.
 * Import files are limited to 5 MB and 2,000 testimonials.
 
 == Changelog ==
+
+= 1.1.4 =
+* Removed automatic testimonial creation during plugin activation.
+* New installations now start empty; the bundled JSON remains available for optional manual import.
 
 = 1.1.3 =
 * Neutralized theme-level button hover styles and the parent-card hover while View more is hovered.
