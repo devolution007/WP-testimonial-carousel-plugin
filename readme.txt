@@ -2,9 +2,9 @@
 Contributors: testimonialcarousel
 Tags: testimonials, carousel, shortcode, popup, school
 Requires at least: 6.2
-Tested up to: 6.8
+Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 1.1.4
+Stable tag: 1.1.5
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -72,6 +72,11 @@ Open **Testimonials > Import / Export** in the WordPress dashboard.
 * Import files are limited to 5 MB and 2,000 testimonials.
 
 == Changelog ==
+
+= 1.1.5 =
+* Added GPL-compatible license metadata to the plugin header.
+* Replaced the campus meta query with in-memory filtering to avoid slow-query warnings.
+* Normalized source line endings and updated WordPress tested compatibility to 7.1.
 
 = 1.1.4 =
 * Removed automatic testimonial creation during plugin activation.

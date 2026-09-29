@@ -2,9 +2,11 @@
 /**
  * Plugin Name: Testimonial Carousel
  * Description: Manage testimonials in WordPress and display them in a responsive autoplay carousel with animated popups.
- * Version: 1.1.4
+ * Version: 1.1.5
  * Author: Devolution
  * Text Domain: testimonial-carousel
+ * License: GPL v2 or later
+ * License URI: https://www.gnu.org/licenses/gpl-2.0.html
  * Requires at least: 6.2
  * Requires PHP: 7.4
  */
@@ -13,7 +15,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'BMTC_VERSION', '1.1.4' );
+define( 'BMTC_VERSION', '1.1.5' );
 define( 'BMTC_FILE', __FILE__ );
 define( 'BMTC_DIR', plugin_dir_path( __FILE__ ) );
 define( 'BMTC_URL', plugin_dir_url( __FILE__ ) );
@@ -458,17 +460,19 @@ final class Testimonial_Carousel {
 			'order'          => 'ASC',
 			'no_found_rows'  => true,
 		);
-		if ( '' !== trim( $atts['campus'] ) ) {
-			$args['meta_query'] = array(
-				array(
-					'key'     => '_bmtc_campus',
-					'value'   => sanitize_text_field( $atts['campus'] ),
-					'compare' => '=',
-				),
-			);
-		}
-
 		$query = new WP_Query( $args );
+		$campus_filter = sanitize_text_field( trim( (string) $atts['campus'] ) );
+		if ( '' !== $campus_filter && ! empty( $query->posts ) ) {
+			$query->posts = array_values(
+				array_filter(
+					$query->posts,
+					static function ( $testimonial ) use ( $campus_filter ) {
+						return $campus_filter === (string) get_post_meta( $testimonial->ID, '_bmtc_campus', true );
+					}
+				)
+			);
+			$query->post_count = count( $query->posts );
+		}
 		if ( ! $query->have_posts() ) {
 			return '';
 		}
